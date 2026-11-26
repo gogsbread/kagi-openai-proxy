@@ -130,6 +130,7 @@ func New(settings config.Settings) *Proxy {
 	mux.HandleFunc("GET /health", p.health)
 	mux.HandleFunc("GET /v1/models", p.listModels)
 	mux.HandleFunc("POST /v1/chat/completions", p.chatCompletions)
+	mux.HandleFunc("POST /v1/responses", p.responses)
 	mux.HandleFunc("POST /v1/ask", p.ask)
 	mux.HandleFunc("/", p.notFound)
 	p.handler = hostAllowList(settings.AllowedHosts, mux)
@@ -246,7 +247,7 @@ func (p *Proxy) requireAuth(w http.ResponseWriter, r *http.Request) bool {
 	return false
 }
 
-var knownRoutes = map[string]string{"/health": "GET, HEAD", "/v1/models": "GET, HEAD", "/v1/chat/completions": "POST", "/v1/ask": "POST"}
+var knownRoutes = map[string]string{"/health": "GET, HEAD", "/v1/models": "GET, HEAD", "/v1/chat/completions": "POST", "/v1/responses": "POST", "/v1/ask": "POST"}
 
 // notFound answers unrouted requests: 405 for a known path with the wrong method, else 404.
 func (p *Proxy) notFound(w http.ResponseWriter, r *http.Request) {
