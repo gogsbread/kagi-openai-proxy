@@ -45,6 +45,7 @@ func (p *Proxy) responses(w http.ResponseWriter, r *http.Request) {
 		writeError(w, terr)
 		return
 	}
+	th := planResponseThread(body, req)
 	content := translate.Flatten(translate.WithToolPrompt(req.Messages, req.Tools), model.contextWindow)
 
 	switch p.acquireSlot(r.Context()) {
@@ -58,10 +59,10 @@ func (p *Proxy) responses(w http.ResponseWriter, r *http.Request) {
 	}
 	opts := kagi.TurnOptions{
 		EnableSearch: model.search, Personalization: settings.Personalization, ReasoningEffort: model.effort,
-		IsSaved: settings.ThreadLifecycle.IsSaved(),
+		IsSaved: threadIsSaved(settings.ThreadLifecycle.IsSaved(), settings.ThreadLifecycle.DeletesThreads()),
 	}
-	runner, terr := p.startTurn(model.id, settings.ThreadLifecycle.DeletesThreads(), func(ctx context.Context) (kagi.CreatedTurn, error) {
-		return p.kagi.CreateTurn(ctx, content, model.id, opts)
+	runner, terr := p.startTurn(model.id, false, func(ctx context.Context) (kagi.CreatedTurn, error) {
+		return p.createOrContinue(ctx, th, content, model.id, opts)
 	})
 	if terr != nil {
 		writeError(w, terr)
@@ -69,7 +70,7 @@ func (p *Proxy) responses(w http.ResponseWriter, r *http.Request) {
 	}
 	// The thread exists before any body byte is written: tell the client which one it is.
 	w.Header().Set("X-Kagi-Thread", runner.conversationUUID)
-	rs := translate.NewResponseStream(newResponseID(), time.Now().Unix(), model.response)
+	rs := translate.NewResponseStream(th.responseID(runner.branchUUID), time.Now().Unix(), model.response)
 	p.respondResponses(w, r, runner, rs, req.Stream, req.Tools)
 }
 

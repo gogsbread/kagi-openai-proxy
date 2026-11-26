@@ -354,7 +354,7 @@ func (s *ResponseStream) TextOpen() bool { return s.msgOpen }
 
 // OpenText starts the assistant message item.
 func (s *ResponseStream) OpenText() string {
-	s.msgID, s.msgIndex, s.msgOpen = newItemID("msg_"), len(s.output), true
+	s.msgID, s.msgIndex, s.msgOpen = s.itemID("msg_"), len(s.output), true
 	s.msgText.Reset()
 	return s.event("response.output_item.added", map[string]any{"output_index": s.msgIndex, "item": s.messageItem("in_progress", nil)}) +
 		s.event("response.content_part.added", map[string]any{"item_id": s.msgID, "output_index": s.msgIndex, "content_index": 0, "part": outputText("")})
@@ -384,6 +384,7 @@ func (s *ResponseStream) CloseText() string {
 // id; the client sends it back with the matching function_call_output.
 func (s *ResponseStream) FunctionCall(c ToolCall) string {
 	index, itemID := len(s.output), newItemID("fc_")
+	c.ID = s.callID(c, index)
 	item := func(status, args string) map[string]any {
 		return map[string]any{"id": itemID, "type": "function_call", "status": status,
 			"call_id": c.ID, "name": c.Function.Name, "arguments": args}
